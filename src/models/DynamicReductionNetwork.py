@@ -13,7 +13,7 @@ from torch.utils.checkpoint import checkpoint
 from torch_cluster import knn_graph
 
 from torch_geometric.nn import EdgeConv, NNConv
-from torch_geometric.nn.pool.edge_pool import EdgePooling
+#from torch_geometric.nn.pool.edge_pool import EdgePooling
 
 from torch_geometric.utils import normalized_cut
 from torch_geometric.utils import remove_self_loops
@@ -39,6 +39,7 @@ class DynamicReductionNetwork(nn.Module):
     # One encoding layer is used to abstract away the input features.
     def __init__(self, input_dim=5, hidden_dim=64, output_dim=1, k=16, aggr='add',
                  norm=torch.tensor([1./500., 1./500., 1./54., 1/25., 1./1000.])):
+ #                norm=torch.tensor([1., 1., 1., 1., 1.])):
         super(DynamicReductionNetwork, self).__init__()
 
         self.datanorm = nn.Parameter(norm)
@@ -48,11 +49,11 @@ class DynamicReductionNetwork(nn.Module):
         middle_width = 3 * hidden_dim // 2
 
         self.inputnet =  nn.Sequential(
-            nn.Linear(input_dim, hidden_dim//2),            
+            nn.Linear(input_dim, 2*hidden_dim),            
             nn.ELU(),
-            nn.Linear(hidden_dim//2, hidden_dim),
+            nn.Linear(2*hidden_dim, 2*hidden_dim),
             nn.ELU(),
-            nn.Linear(hidden_dim, hidden_dim),
+            nn.Linear(2*hidden_dim, hidden_dim),
             nn.ELU(),
         )        
         convnn1 = nn.Sequential(nn.Linear(start_width, middle_width),
@@ -71,8 +72,10 @@ class DynamicReductionNetwork(nn.Module):
         
         self.output = nn.Sequential(nn.Linear(hidden_dim, hidden_dim),
                                     nn.ELU(),
+                                    #nn.Softplus(),
                                     nn.Linear(hidden_dim, hidden_dim//2),
-                                    nn.ELU(),                                    
+                                    nn.ELU(),
+                                    #nn.Softplus(),
                                     nn.Linear(hidden_dim//2, output_dim))
         
         
@@ -96,5 +99,5 @@ class DynamicReductionNetwork(nn.Module):
         x, batch = max_pool_x(cluster, data.x, data.batch)
 
         x = global_max_pool(x, batch)
-        
+#        print(self.output(x))
         return self.output(x).squeeze(-1)

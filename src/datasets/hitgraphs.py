@@ -67,6 +67,7 @@ class HitGraphDataset(Dataset):
             i_in  = Ri[Ri[:,1].argsort(kind='stable')][:,0]
                         
             x = g.X.astype(np.float32)
+            sim = g.simmatched.astype(np.float32)
             edge_index = np.stack((i_out,i_in))
             y = g.y.astype(np.int64)
             if not self._categorical:
@@ -74,7 +75,8 @@ class HitGraphDataset(Dataset):
             #print('y type',y.dtype)
             outdata = Data(x=torch.from_numpy(x),
                            edge_index=torch.from_numpy(edge_index),
-                           y=torch.from_numpy(y))
+                           y=torch.from_numpy(y),
+                           z = torch.from_numpy(sim))
             
             if not self._directed and not outdata.is_undirected():
                 rows,cols = outdata.edge_index

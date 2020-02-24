@@ -20,6 +20,7 @@ from models import get_model, get_losses
 from .base import base
 
 
+
 class GNNTrainer(base):
     """Trainer code for basic classification problems with binomial cross entropy."""
 
@@ -123,6 +124,14 @@ class GNNTrainer(base):
         sum_loss = 0
         sum_correct = 0
         sum_total = 0
+        tpr_s = 0
+        tpr_b = 0
+        fpr_b = 0
+        fnr_s = 0
+        tot_s = 0
+        tot_b = 0
+        
+        
         start_time = time.time()
         # Loop over batches
         total = len(data_loader.dataset)
@@ -132,6 +141,7 @@ class GNNTrainer(base):
         denm = torch.zeros_like(self._category_weights)
         
         cat_wgt_shape = self._category_weights.shape[0]
+       
       
         confusion_num = torch.zeros([cat_wgt_shape,cat_wgt_shape]).to(self.device)
         confusion_denm = torch.zeros([cat_wgt_shape,cat_wgt_shape]).to(self.device)
@@ -146,10 +156,73 @@ class GNNTrainer(base):
             # Count number of correct predictions
             #print(batch_output)
             #print('torch.max',torch.argmax(batch_output,dim=-1))
+#            print ('batch_output\n',batch_output)
+#            print ('batch_target\n',batch_target)
+########################copied from old            
+            '''
+            matches = ((batch_output > 0.5) == (batch_target > 0.5))
+            sum_correct += matches.sum().item()
+            sum_total += matches.numel()
+            #self.logger.debug(' batch %i loss %.3f correct %i total %i',
+            #                  i, batch_loss.item(), matches.sum().item(),
+            #                  matches.numel())                           
+        summary['valid_time'] = time.time() - start_time
+        summary['valid_loss'] = sum_loss / (i + 1)
+        summary['valid_acc'] = sum_correct / sum_total
+        self.logger.debug(' Processed %i samples in %i batches',
+                          len(data_loader.sampler), i + 1)
+        self.logger.info('  Validation loss: %.3f acc: %.3f' %
+                         (summary['valid_loss'], summary['valid_acc']))
+            '''
+#        return summary
+########################copied from old 
+########################copied from old            
+            pred_s = (batch_output > 0.5)
+            true_s = (batch_target > 0.5)
+            pred_b = (batch_output < 0.5)
+            true_b = (batch_target < 0.5)
+            tpr_s += (pred_s & true_s).sum().item()
+            tpr_b += (pred_b & true_b).sum().item()
+            fpr_b += (pred_s & true_b).sum().item()
+            fnr_s += (pred_b & true_s).sum().item()
+#            print (tpr_s,tpr_b,fpr_s,fpr_b,tot)
+            tot_s += np.count_nonzero(true_s.cpu())
+            tot_b += np.count_nonzero(true_b.cpu())
             
+            matches = ((batch_output > 0.5) == (batch_target > 0.5))
+            sum_correct += matches.sum().item()
+            sum_total += matches.numel()
+            #self.logger.debug(' batch %i loss %.3f correct %i total %i',
+            #                  i, batch_loss.item(), matches.sum().item(),
+            #                  matches.numel())                           
+        summary['valid_time'] = time.time() - start_time
+        summary['valid_loss'] = sum_loss / (i + 1)
+        summary['valid_acc'] = sum_correct / sum_total
+        summary['signal_efficiency'] = tpr_s/tot_s
+        summary['background_efficiency'] = tpr_b/tot_b
+        summary['signal_purity'] = tpr_s/(tpr_s +fpr_b) 
+        summary['background_purity'] = tpr_b/(tpr_b +fnr_s)
+        
+#        summary['tpr_b'] = tpr_b
+#        summary['tpr_b +fnr_s'] = (tpr_b +fnr_s)
+        
+        self.logger.debug(' Processed %i samples in %i batches',
+                          len(data_loader.sampler), i + 1)
+        self.logger.info('  Validation loss: %.3f acc: %.3f' %
+                         (summary['valid_loss'], summary['valid_acc']))
+        self.logger.info('  signal_efficiency: %.6f background_efficiency: %.6f' %
+                         (summary['signal_efficiency'], summary['background_efficiency']))
+        self.logger.info('  signal_purity: %.6f background_purity: %.6f' %
+                         (summary['signal_purity'], summary['background_purity']))
+        
+#        self.logger.info('  tpr_b: %.3f tpr_b +fnr_s: %.3f' %
+#                         (summary['tpr_b'], summary['tpr_b +fnr_s']))
+#        return summary
+########################copied from old  
+        '''
             truth_cat_counts = torch.unique(batch_target, return_counts = True)
             pred = torch.argmax(batch_output,dim=-1)
-            
+            print (batch_output)
             for j in range(cat_wgt_shape):
                 cat_counts = torch.unique(pred[batch_target == j], return_counts=True)                
                 confusion_num[:,j][cat_counts[0]] += cat_counts[1].float()
@@ -184,6 +257,10 @@ class GNNTrainer(base):
                           len(data_loader.sampler), i + 1)
         self.logger.info('  Validation loss: %.5f acc: %.5f' %
                          (summary['valid_loss'], summary['valid_acc']))
+
+        
+        '''
+        
         return summary
 
 
